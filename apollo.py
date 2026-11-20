@@ -5,17 +5,65 @@ import matplotlib.animation as animation
 import numpy as np
 from matplotlib.patches import Polygon
 
-# Simulation settings
-timestep = 0.02
+# ==========================================
+# APOLLO - SIMULATION CONFIGURATION
+# ==========================================
 
-fuel_remaining = 0.3
-rocket_dry_mass = 1.0
-total_mass = rocket_dry_mass + fuel_remaining
+# TIME
+TIMESTEP = 0.02
+MAX_SIMULATION_STEPS = 100000
 
-gravity = 9.81
-throttle = 0.654
-max_thrust = 30
+# INITIAL CONDITIONS
+INITIAL_POSITION = (0, 10)
+INITIAL_VELOCITY = (-1, 0)
+INITIAL_THETA = 0.0
+INITIAL_OMEGA = 0.0
 
+# MASS AND FUEL
+DRY_MASS = 1.0
+INITIAL_FUEL = 1.0
+INITIAL_MASS = DRY_MASS + INITIAL_FUEL
+FUEL_CONSUMPTION_RATE = 0.05
+
+# PHYSICS
+GRAVITY = 9.81
+
+# PROPULSION
+MAX_THRUST = 30.0
+
+# ROTATIONAL DYNAMICS
+MAX_TORQUE = 1.0
+MOMENT_OF_INERTIA = 0.5
+
+# CONTROLLER GAINS
+
+# Horizontal controller
+K_X_POSITION = 0.25
+K_X_VELOCITY = 1.0
+
+# Attitude controller
+K_THETA = 4.0
+K_OMEGA = 4.0
+
+# Vertical controller
+VERTICAL_POSITION_GAIN = 0.2
+MAX_DESCENT_SPEED = 0.5
+MIN_DESCENT_SPEED = 0.2
+
+# LANDING LIMITS
+MAX_HORIZONTAL_ERROR = 1.0
+MAX_HORIZONTAL_VELOCITY = 0.5
+
+MIN_VERTICAL_VELOCITY = -1.0
+MAX_VERTICAL_VELOCITY = 0.0
+
+MAX_TILT = 0.175
+MAX_ROTATION_RATE = 0.175
+
+# VISUALIZATION
+LANDING_PAD_HALF_WIDTH = 1.0
+
+# SIMULATION HISTORY
 desired_theta_history = []
 
 
@@ -25,18 +73,18 @@ def pos_ve(position, velocity, theta, omega, fuel_remaining, mass,
     current_mass = mass
 
     new_throttle, fuel_remaining, new_mass = vertical_controller(
-        position, velocity, current_mass, gravity,
-        max_thrust, fuel_remaining, timestep
+        position, velocity, current_mass, GRAVITY,
+        MAX_THRUST, fuel_remaining, timestep
     )
 
     theta, omega = rotation_check(
-        position, velocity, 1, 0.5, theta, omega, timestep
+        position, velocity, MAX_TORQUE, MOMENT_OF_INERTIA, theta, omega, timestep
     )
 
-    thrust = new_throttle * max_thrust
+    thrust = new_throttle * MAX_THRUST
 
     acceleration_x = thrust / current_mass * math.sin(theta)
-    acceleration_y = thrust / current_mass * math.cos(theta) - gravity
+    acceleration_y = thrust / current_mass * math.cos(theta) - GRAVITY
 
     velocity_x_new = velocity[0] + acceleration_x * timestep
     velocity_y_new = velocity[1] + acceleration_y * timestep
@@ -59,11 +107,11 @@ def pos_ve(position, velocity, theta, omega, fuel_remaining, mass,
 
 def landed_safely(position, velocity, theta, omega):
 
-    if (-1 <= position[0] <= 1) and \
-       (-0.5 <= velocity[0] <= 0.5) and \
-       (-1 <= velocity[1] <= 0) and \
-       (-0.175 < theta < 0.175) and \
-       (-0.175 < omega < 0.175):
+    if (-MAX_HORIZONTAL_ERROR <= position[0] <= MAX_HORIZONTAL_ERROR) and \
+       (-MAX_HORIZONTAL_VELOCITY <= velocity[0] <= MAX_HORIZONTAL_VELOCITY) and \
+       (MIN_VERTICAL_VELOCITY <= velocity[1] <= MAX_VERTICAL_VELOCITY) and \
+       (-MAX_TILT < theta < MAX_TILT) and \
+       (-MAX_ROTATION_RATE < omega < MAX_ROTATION_RATE):
 
         return True
 
@@ -79,7 +127,7 @@ def end_simulation(position, velocity, theta, omega):
 
 def test(position, velocity, trajectory, trajectory_angle,
          fuel_history, theta, omega, fuel_remaining, mass,
-         mass_append, timestep=0.02):
+         mass_append, timestep=TIMESTEP):
 
     initial_fuel = fuel_remaining
     steps = 0
@@ -108,7 +156,7 @@ def test(position, velocity, trajectory, trajectory_angle,
 
             break
 
-        if steps >= 100000:
+        if steps >= MAX_SIMULATION_STEPS:
             status = "Step limit"
             break
 
@@ -143,9 +191,12 @@ def rotation_check(position, velocity, torque, inertia,
 
 
 def vertical_controller(position, velocity, mass, gravity,
-                        max_thrust, fuel_remaining, timestep=0.02):
+                        max_thrust, fuel_remaining, timestep=TIMESTEP):
 
-    vy_target = -min(0.5, max(0.2 * position[1], 0.2))
+    vy_target = -min(
+    MAX_DESCENT_SPEED,
+    max(VERTICAL_POSITION_GAIN * position[1], MIN_DESCENT_SPEED)
+)
 
     ay_command = vy_target - velocity[1]
 
@@ -164,7 +215,10 @@ def vertical_controller(position, velocity, mass, gravity,
 
 def horizontal_controller(position, velocity, gravity):
 
-    desired_acceleration = -(0.25 * position[0]) - (1 * velocity[0])
+    desired_acceleration = (
+        -(K_X_POSITION * position[0])
+        - (K_X_VELOCITY * velocity[0])
+    )
 
     desired_theta = math.atan(desired_acceleration / gravity)
 
@@ -176,11 +230,11 @@ def horizontal_controller(position, velocity, gravity):
 def attitude_controller(position, velocity, theta, omega,
                         max_torque, inertia):
 
-    desired_theta = horizontal_controller(position, velocity, 9.81)
+    desired_theta = horizontal_controller(position, velocity, GRAVITY)
 
     desired_angular_acceleration = (
-        4 * (desired_theta - theta) - 4 * omega
-    )
+    K_THETA * (desired_theta - theta) - K_OMEGA * omega
+)
 
     turn_command = (
         desired_angular_acceleration * inertia
@@ -191,7 +245,7 @@ def attitude_controller(position, velocity, theta, omega,
 
 def fuel_check(fuel_remaining, throttle, current_mass, timestep):
 
-    requested_fuel = 0.05 * throttle * timestep
+    requested_fuel = FUEL_CONSUMPTION_RATE * throttle * timestep
 
     actual_fuel_used = min(fuel_remaining, requested_fuel)
 
@@ -212,7 +266,7 @@ def plot_horizontal(x_coordinates, y_coordinates):
 
     plt.axhline(y=0, color = 'black', linestyle = '--', label = 'Ground')
 
-    x_values = [-1,1]
+    x_values = [-LANDING_PAD_HALF_WIDTH, LANDING_PAD_HALF_WIDTH]
     y_values = [0,0]
 
     plt.plot(x_values, y_values, color = 'orange', label = 'Landing Pad')
@@ -306,7 +360,7 @@ def animate_rocket(trajectory, theta_history):
 
     # Fixed ground and landing pad
     ax.axhline(y=0, color='black', linestyle='--', label='Ground')
-    ax.plot([-1, 1], [0, 0], color='orange',
+    ax.plot([-LANDING_PAD_HALF_WIDTH, LANDING_PAD_HALF_WIDTH], [0, 0], color='orange',
             linewidth=5, label='Landing Pad')
 
     # Rocket shape
@@ -363,8 +417,8 @@ def animate_rocket(trajectory, theta_history):
 
 def main():
 
-    position = (0, 10)
-    velocity = (-1, 0)
+    position = INITIAL_POSITION
+    velocity = INITIAL_VELOCITY
 
     trajectory = []
     trajectory_angle = []
@@ -381,12 +435,12 @@ def main():
         trajectory,
         trajectory_angle,
         fuel_history,
-        0.0,
-        0,
-        1.0,
-        2.0,
+        INITIAL_THETA,
+        INITIAL_OMEGA,
+        INITIAL_FUEL,
+        INITIAL_MASS,
         mass_append,
-        0.02
+        TIMESTEP
     )
 
     results.append(summary)
@@ -416,7 +470,7 @@ def main():
 
     # list comprehensions for plotting altitude against time
     altitudes = [item[0][1] for item in trajectory]
-    times = [step * 0.02 for step in range(1, len(trajectory) + 1)]
+    times = [step * TIMESTEP for step in range(1, len(trajectory) + 1)]
         
     # list comprehensions for theta and omega
     theta_history = [item[0] for item in trajectory_angle]
