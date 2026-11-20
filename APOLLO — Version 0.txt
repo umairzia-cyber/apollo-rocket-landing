@@ -1,0 +1,15 @@
+APOLLO — Version 0
+Goal: Simulate a 2D rocket landing on a fixed pad. Compare controllers by whether they land safely and how much fuel they use.
+
+Rocket state: Horizontal and vertical position, horizontal and vertical speed, tilt, rotation speed, and remaining fuel.
+
+Controller actions:
+- Engine throttle: 0 (off) to 1 (maximum).
+- Turning command: -1 (turn left) to +1 (turn right).
+Physics: Include gravity, thrust, turning force and fuel consumption. Use metres, seconds and kilograms, with gravity set to 9.81 m/s². The rocket tilts, so its thrust direction tilts too.
+
+What Version 0 leaves out: Wind, air resistance, sensor noise and camera-based pad detection. The controller gets the pad’s location and the rocket’s state directly. We’ll add wind and camera sensing later, one at a time.
+
+Safe landing: The rocket touches down inside the pad’s safe zone while upright and moving slowly. For an initial rule, we could require tilt under 10°, horizontal speed under 0.5 m/s, and downward speed under 1 m/s. These are learning targets for our simulator, not real-world safety limits. We’ll use landing speed as a rough impact measure; actual damage would need a separate structural model.
+
+Evaluation: For each controller, measure safe-landing rate, landing speed, distance from the pad centre and fuel used. Later, repeat the comparison with wind and changes to the rocket’s mass or thrust.
