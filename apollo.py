@@ -14,12 +14,15 @@ from plotting import (
     animate_rocket
 )
 
+from config import (
+    TIMESTEP,
+    MAX_SIMULATION_STEPS,
+    DRY_MASS,
+    INITIAL_FUEL,
+    FUEL_CONSUMPTION_RATE,
+    VERTICAL_VELOCITY_GAIN
+)
 
-# APOLLO - (INITAL) SIMULATION CONFIGURATION
-
-
-TIMESTEP = 0.02
-MAX_SIMULATION_STEPS = 100000
 
 # INITIAL CONDITIONS
 INITIAL_POSITION = (0, 10)
@@ -28,10 +31,7 @@ INITIAL_THETA = 0.0
 INITIAL_OMEGA = 0.0
 
 # MASS AND FUEL
-DRY_MASS = 1.0
-INITIAL_FUEL = 0.3
 INITIAL_MASS = DRY_MASS + INITIAL_FUEL
-FUEL_CONSUMPTION_RATE = 0.05
 
 GRAVITY = 9.81
 
@@ -97,7 +97,7 @@ def main():
 
     results = []
 
-    simulation_result, trajectory, trajectory_angle, fuel_history, mass_append = test(
+    simulation_result, trajectory, trajectory_angle, fuel_history, mass_history, time_history = test(
     initial_state,
     "Low-Fuel (Crash)",
     INITIAL_FUEL,
@@ -120,7 +120,9 @@ def main():
     MIN_VERTICAL_VELOCITY,
     MAX_VERTICAL_VELOCITY,
     MAX_TILT,
-    MAX_ROTATION_RATE
+    MAX_ROTATION_RATE,
+    DRY_MASS,
+    FUEL_CONSUMPTION_RATE
 )
 
 

@@ -13,20 +13,25 @@ def vertical_controller(
     vertical_position_gain,
     max_descent_speed,
     min_descent_speed,
-    fuel_check
+    fuel_check,
+    VERTICAL_VELOCITY_GAIN,
+    dry_mass,
+    FUEL_CONSUMPTION_RATE
 ):
     vy_target = -min(
         max_descent_speed,
         max(vertical_position_gain * position[1], min_descent_speed)
     )
 
-    ay_command = vy_target - velocity[1]
+
+    velocity_error = vy_target - velocity[1]
+    ay_command = VERTICAL_VELOCITY_GAIN * velocity_error
 
     throttle = (mass * (gravity + ay_command)) / max_thrust
     throttle = max(0, min(1, throttle))
 
     fuel_remaining, new_mass = fuel_check(
-        fuel_remaining, throttle, mass, timestep
+        fuel_remaining, throttle, dry_mass, timestep, FUEL_CONSUMPTION_RATE
     )
 
     if fuel_remaining <= 0:

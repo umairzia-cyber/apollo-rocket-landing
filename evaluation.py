@@ -5,7 +5,7 @@ from results import SimulationResult
 import csv
 import os
 
-
+time_history = [0.0]
 
 def landed_safely(
     state,
@@ -20,8 +20,8 @@ def landed_safely(
         -max_horizontal_error <= state.position[0] <= max_horizontal_error
         and -max_horizontal_velocity <= state.velocity[0] <= max_horizontal_velocity
         and min_vertical_velocity <= state.velocity[1] <= max_vertical_velocity
-        and -max_tilt < state.theta < max_tilt
-        and -max_rotation_rate < state.omega < max_rotation_rate
+        and -max_tilt <= state.theta <= max_tilt
+        and -max_rotation_rate <= state.omega <= max_rotation_rate
     ):
         return True
 
@@ -69,12 +69,15 @@ def test(
     min_vertical_velocity,
     max_vertical_velocity,
     max_tilt,
-    max_rotation_rate
+    max_rotation_rate,
+    DRY_MASS,
+    FUEL_CONSUMPTION_RATE
 ):
     trajectory = []
     trajectory_angle = []
     fuel_history = []
     mass_history = []
+    time_history = [0.0]
 
     status = "Failure"
     steps = 0
@@ -101,7 +104,9 @@ def test(
         k_x_velocity,
         k_theta,
         k_omega,
-        desired_theta_history
+        desired_theta_history,
+        DRY_MASS,
+        FUEL_CONSUMPTION_RATE
     )
 
         trajectory.append((state.position, state.velocity))
@@ -110,6 +115,7 @@ def test(
         mass_history.append(state.mass)
 
         steps += 1
+        time_history.append(steps * timestep)
 
     # evalute landing conditions if the rocket has touched down
     if state.position[1] <= 0:
@@ -124,7 +130,9 @@ def test(
         ):
             status = "Success"
         else:
-            status = "Failure"
+            status = "Crash"
+    else:
+        status = "Timed-out"
 
     result = SimulationResult(
     scenario_name=scenario_name,
@@ -146,4 +154,4 @@ def test(
 
     save_result_to_csv(result)
 
-    return result, trajectory, trajectory_angle, fuel_history, mass_history
+    return result, trajectory, trajectory_angle, fuel_history, mass_history, time_history
