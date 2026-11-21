@@ -1,4 +1,10 @@
+from unittest import result
+import pandas as pd
+
+from numpy import rint
+
 from evaluation import test
+from state import RocketState
 
 from plotting import (
     plot_horizontal,
@@ -9,27 +15,24 @@ from plotting import (
 )
 
 
-# ==========================================
-# APOLLO - SIMULATION CONFIGURATION
-# ==========================================
+# APOLLO - (INITAL) SIMULATION CONFIGURATION
 
-# TIME
+
 TIMESTEP = 0.02
 MAX_SIMULATION_STEPS = 100000
 
 # INITIAL CONDITIONS
 INITIAL_POSITION = (0, 10)
-INITIAL_VELOCITY = (-1, 0)
+INITIAL_VELOCITY = (0, 0)
 INITIAL_THETA = 0.0
 INITIAL_OMEGA = 0.0
 
 # MASS AND FUEL
 DRY_MASS = 1.0
-INITIAL_FUEL = 1.0
+INITIAL_FUEL = 0.3
 INITIAL_MASS = DRY_MASS + INITIAL_FUEL
 FUEL_CONSUMPTION_RATE = 0.05
 
-# PHYSICS
 GRAVITY = 9.81
 
 # PROPULSION
@@ -70,11 +73,20 @@ LANDING_PAD_HALF_WIDTH = 1.0
 # SIMULATION HISTORY for theta
 desired_theta_history = []
 
+# position in metres, velocity in m/s, theta in radians, 
+# omega in rad/s, and fuel and mass in kg.
+
 
 def main():
 
-    position = INITIAL_POSITION
-    velocity = INITIAL_VELOCITY
+    initial_state = RocketState(
+    position=INITIAL_POSITION,
+    velocity=INITIAL_VELOCITY,
+    theta=INITIAL_THETA,
+    omega=INITIAL_OMEGA,
+    fuel=INITIAL_FUEL,
+    dry_mass=DRY_MASS
+)
 
     trajectory = []
     trajectory_angle = []
@@ -85,13 +97,9 @@ def main():
 
     results = []
 
-    summary, trajectory, trajectory_angle, fuel_history, mass_append = test(
-    INITIAL_POSITION,
-    INITIAL_VELOCITY,
-    INITIAL_THETA,
-    INITIAL_OMEGA,
-    INITIAL_FUEL,
-    INITIAL_MASS,
+    simulation_result, trajectory, trajectory_angle, fuel_history, mass_append = test(
+    initial_state,
+    "Low-Fuel (Crash)",
     INITIAL_FUEL,
     TIMESTEP,
     MAX_SIMULATION_STEPS,
@@ -115,23 +123,23 @@ def main():
     MAX_ROTATION_RATE
 )
 
-    results.append(summary)
 
-    # Display baseline results
+    baseline_results = []
+
+    baseline_results.append(simulation_result.to_dict())
+
     print("\nBASELINE RESULTS")
     print("-" * 65)
 
-    for key, value in results[0].items():
+    for key, value in baseline_results[0].items():
         if isinstance(value, float):
             print(f"{key}: {value:.4f}")
         else:
             print(f"{key}: {value}")
 
-    print("-" * 65)
+    print("-" * 65) # formatting line
 
     print("Total simulation steps:", len(trajectory))
-
-    # Keep trajectories available for future plots
     print("Trajectory points:", len(trajectory))
     print("Fuel history points:", len(fuel_history))
 
@@ -149,13 +157,13 @@ def main():
     omega_history = [item[1] for item in trajectory_angle]
 
 
-
-
-    plot_horizontal(x_coordinates, y_coordinates)
-    plot_vertical(times, altitudes)
-    plot_rotation(times, theta_history, omega_history, desired_theta_history)
-    plot_fuel_mass(times, fuel_history, mass_append)
     rocket_animation = animate_rocket(trajectory, theta_history)
+
+
+    baseline_table = pd.DataFrame(baseline_results)
+
+    print("\nBASELINE COMPARISON")
+    print(baseline_table.to_string(index=False))
 
 
 main()

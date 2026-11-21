@@ -1,13 +1,14 @@
-
+import state
+from state import RocketState
 from simulation import pos_ve
+from results import SimulationResult
+import csv
+import os
 
 
 
 def landed_safely(
-    position,
-    velocity,
-    theta,
-    omega,
+    state,
     max_horizontal_error,
     max_horizontal_velocity,
     min_vertical_velocity,
@@ -16,25 +17,38 @@ def landed_safely(
     max_rotation_rate
 ):
     if (
-        -max_horizontal_error <= position[0] <= max_horizontal_error
-        and -max_horizontal_velocity <= velocity[0] <= max_horizontal_velocity
-        and min_vertical_velocity <= velocity[1] <= max_vertical_velocity
-        and -max_tilt < theta < max_tilt
-        and -max_rotation_rate < omega < max_rotation_rate
+        -max_horizontal_error <= state.position[0] <= max_horizontal_error
+        and -max_horizontal_velocity <= state.velocity[0] <= max_horizontal_velocity
+        and min_vertical_velocity <= state.velocity[1] <= max_vertical_velocity
+        and -max_tilt < state.theta < max_tilt
+        and -max_rotation_rate < state.omega < max_rotation_rate
     ):
         return True
 
     return False
 
 
+def save_result_to_csv(result, filename="baseline_results.csv"):
+
+    file_exists = os.path.isfile(filename)
+
+    with open(filename, mode="a", newline="") as file:
+
+        writer = csv.DictWriter(
+            file,
+            fieldnames=result.to_dict().keys()
+        )
+
+        # Write column headers only when creating a new file
+        if not file_exists or os.path.getsize(filename) == 0:
+            writer.writeheader()
+
+        writer.writerow(result.to_dict())
+
 
 def test(
-    position,
-    velocity,
-    theta,
-    omega,
-    fuel_remaining,
-    mass,
+    state,
+    scenario_name,
     initial_fuel,
     timestep,
     max_simulation_steps,
@@ -65,51 +79,42 @@ def test(
     status = "Failure"
     steps = 0
 
-    while position[1] > 0 and steps < max_simulation_steps:
+    initial_position = state.position
+    initial_velocity = state.velocity
+    initial_theta = state.theta
+    initial_omega = state.omega
+    initial_fuel = state.fuel
 
-        (
-            position,
-            velocity,
-            theta,
-            omega,
-            fuel_remaining,
-            mass
-        ) = pos_ve(
-            position,
-            velocity,
-            theta,
-            omega,
-            fuel_remaining,
-            mass,
-            gravity,
-            max_thrust,
-            max_torque,
-            moment_of_inertia,
-            timestep,
-            vertical_position_gain,
-            max_descent_speed,
-            min_descent_speed,
-            k_x_position,
-            k_x_velocity,
-            k_theta,
-            k_omega,
-            desired_theta_history
-        )
+    while state.position[1] > 0 and steps < max_simulation_steps:
 
-        trajectory.append((position, velocity))
-        trajectory_angle.append((theta, omega))
-        fuel_history.append(fuel_remaining)
-        mass_history.append(mass)
+        state = pos_ve(
+        state,
+        gravity,
+        max_thrust,
+        max_torque,
+        moment_of_inertia,
+        timestep,
+        vertical_position_gain,
+        max_descent_speed,
+        min_descent_speed,
+        k_x_position,
+        k_x_velocity,
+        k_theta,
+        k_omega,
+        desired_theta_history
+    )
+
+        trajectory.append((state.position, state.velocity))
+        trajectory_angle.append((state.theta, state.omega))
+        fuel_history.append(state.fuel)
+        mass_history.append(state.mass)
 
         steps += 1
 
-    # Ground contact / touchdown evaluation
-    if position[1] <= 0:
+    # evalute landing conditions if the rocket has touched down
+    if state.position[1] <= 0:
         if landed_safely(
-            position,
-            velocity,
-            theta,
-            omega,
+            state,
             max_horizontal_error,
             max_horizontal_velocity,
             min_vertical_velocity,
@@ -121,21 +126,24 @@ def test(
         else:
             status = "Failure"
 
-    summary = {
-        "Status": status,
-        "Horizontal Error (m)": abs(position[0]),
-        "Horizontal Velocity (m/s)": velocity[0],
-        "Vertical Velocity (m/s)": velocity[1],
-        "Tilt (rad)": theta,
-        "Rotation Rate (rad/s)": omega,
-        "Fuel Burned (kg)": initial_fuel - fuel_remaining,
-        "Flight Time (s)": steps * timestep
-    }
+    result = SimulationResult(
+    scenario_name=scenario_name,
+    initial_position=initial_position,
+    initial_velocity=initial_velocity,
+    initial_theta=initial_theta,
+    initial_omega=initial_omega,
+    initial_fuel=initial_fuel,
 
-    return (
-        summary,
-        trajectory,
-        trajectory_angle,
-        fuel_history,
-        mass_history
-    )
+    status=status,
+    horizontal_error=abs(state.position[0]),
+    horizontal_velocity=state.velocity[0],
+    vertical_velocity=state.velocity[1],
+    touchdown_theta=state.theta,
+    touchdown_omega=state.omega,
+    fuel_burned=initial_fuel - state.fuel,
+    flight_time=steps * timestep
+)
+
+    save_result_to_csv(result)
+
+    return result, trajectory, trajectory_angle, fuel_history, mass_history

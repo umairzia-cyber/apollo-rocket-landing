@@ -182,10 +182,8 @@ pip install numpy matplotlib
 7. Run the script using the Run Python File button or the terminal:
 
 ```bash
-python main.py
+python apollo.py
 ```
-
-Replace `main.py` with the actual filename of the simulation script if different.
 
 The simulation will execute, record the trajectory, and generate the plots and animation when their respective functions are called.
 
@@ -208,3 +206,35 @@ All five experiments were performed using the same physical parameters and landi
 Each experiment records the trajectory and fuel history at every simulation step. This allows the plots and animation to be reproduced from the recorded data.
 
 For consistent comparisons, keep the physical parameters, controller configuration, landing limits, and timestep unchanged when testing additional starting conditions.
+
+
+
+## Results and Discussion
+
+### Simulation Results
+
+Six test scenarios were evaluated using the same controller gains, timestep (0.02 s), and dry mass (1.0 kg). Five scenarios used the full initial fuel supply of 1.0 kg, while one used a reduced supply of 0.3 kg to test the system under fuel constraints.
+
+| Scenario | Initial condition | Result | Horizontal error (m) | Vertical velocity at landing (m/s) | Flight time (s) |
+|---|---|---|---:|---:|---:|
+| Upright Baseline | Position (0, 10), velocity (0, 0) | Success | 0.0000 | -0.2005 | 24.48 |
+| Position Error | Position (2, 10), velocity (0, 0) | Success | 0.0006 | -0.2006 | 24.44 |
+| Velocity Error | Position (0, 10), velocity (-1, 0) | Success | 0.0001 | -0.2006 | 24.36 |
+| Opposing Error | Position (2, 10), velocity (-1, 0) | Success | 0.0006 | -0.2006 | 24.42 |
+| Recovering Tilt | Position (0, 10), velocity (0, 0), initial tilt 0.0873 rad | Success | 0.0007 | -0.2006 | 24.40 |
+| Low-Fuel Test | Position (0, 10), velocity (0, 0), fuel 0.3 kg | Failure | 0.0000 | -6.9742 | 16.74 |
+
+All five full-fuel scenarios achieved successful landings. Despite different initial horizontal positions, velocities, and one initial attitude disturbance, the rocket reached the landing area with very small horizontal errors. The final vertical velocity was approximately -0.20 m/s across all five runs, indicating that the controller maintained a consistent, gentle descent.
+
+The recovering-tilt scenario also completed successfully, suggesting that the attitude controller can correct a small initial angular disturbance during descent. The similar results across the full-fuel cases indicate that the control system can handle the tested initial conditions without changing its controller gains.
+
+The low-fuel scenario produced a different outcome. The rocket exhausted its available 0.3 kg of fuel and reached the ground with a vertical velocity of approximately -6.97 m/s. This exceeded the permitted landing-speed limit, so the landing checker classified the result as a failure. This demonstrates the importance of sufficient fuel reserves for controlled descent.
+
+
+### Discussion and Limitations
+
+The results demonstrate that the current control system can correct the tested horizontal position and velocity errors, recover from a small initial tilt, and achieve controlled landings when sufficient fuel is available. The low-fuel test also shows that the system cannot guarantee a safe landing when its available thrust duration is insufficient.
+
+However, this is a simplified two-dimensional simulation, not a complete model of a real rocket. It does not represent atmospheric effects such as wind and air resistance, detailed aerodynamic forces, engine response delays, sensor noise, fuel sloshing, structural limitations, or the full complexity of a real landing surface. The simulation also uses simplified thrust and rotational dynamics.
+
+Therefore, these results demonstrate the behaviour of the implemented physics and control model under selected test conditions. They should not be interpreted as evidence that the controller is ready for real-world rocket flight.

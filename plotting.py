@@ -104,12 +104,12 @@ def animate_rocket(trajectory, theta_history):
     ax.set_ylabel("Altitude (m)")
     ax.set_title("Rocket Landing Simulation")
 
-    # Fixed ground and landing pad
+    # plot the ground and landing pad
     ax.axhline(y=0, color='black', linestyle='--', label='Ground')
     ax.plot([-1, 1], [0, 0], color='orange',
             linewidth=5, label='Landing Pad')
 
-    # Rocket shape
+    # Rocket shape (very basic for the moment)
     rocket_shape = np.array([
         [0, 0.6],
         [-0.15, -0.3],
